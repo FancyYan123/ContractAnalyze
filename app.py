@@ -1,0 +1,80 @@
+from flask import Flask, request, abort
+from flask_restful import Resource, Api
+import json
+from helper import *
+from rules import analyze
+
+from tencentcloud.common import credential
+from tencentcloud.common.profile.client_profile import ClientProfile
+from tencentcloud.common.profile.http_profile import HttpProfile
+from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
+from tencentcloud.ocr.v20181119 import ocr_client, models
+
+app = Flask(__name__)
+api = Api(app)
+Debug = True
+
+
+class ContractMailbox(Resource):
+    def post(self):
+        contract_data = json.loads(request.get_data())
+        # 解析请求中用户自己选择的字段
+        company_name = contract_data['company_name']
+        loan_consistent_with_actual = (
+            True if contract_data['loan_consistent_with_actual'] == '1' else False
+        )
+        fake_advertising = (
+            True if contract_data['fake_advertising'] == '1' else False
+        )
+
+        # 如果用户直接上传的合同文本，直接分析文本
+        if contract_data["type"] == 'text':
+            # TODO: analyze all_text using detecting rules
+            return json.dumps(analyze(contract_data['text'],
+                                      company_name,
+                                      loan_consistent_with_actual,
+                                      fake_advertising))
+
+        # 如果上传的合同图片，先使用腾讯云OCR进行文本提取再分析
+        # 图片以base64编码
+        elif contract_data["type"] == 'image':
+            try:
+                cred = credential.Credential("AKIDqvmSxs0v4QaV9ESpPjqtgBrHTO6c8ugV", "lMiqZ1IKL7mFXWBZr65pIVWM1RlobGgt")
+                httpProfile = HttpProfile()
+                httpProfile.endpoint = "ocr.tencentcloudapi.com"
+
+                clientProfile = ClientProfile()
+                clientProfile.httpProfile = httpProfile
+                client = ocr_client.OcrClient(cred, "ap-shanghai", clientProfile)
+
+                req = models.GeneralBasicOCRRequest()
+                if Debug:
+                    params = '{"ImageBase64":"%s"}' % (str(get_image_base64())[2:-1])
+                else:
+                    params = '{"ImageBase64":"%s"}' % (str(contract_data['image_base64_data']))
+                req.from_json_string(params)
+
+                resp = client.GeneralBasicOCR(req)
+                text = ''
+                for each in resp.TextDetections:
+                    text += each.DetectedText
+
+                # TODO: analyze all_text using detecting rules
+                return json.dumps(analyze(text,
+                                          company_name,
+                                          loan_consistent_with_actual,
+                                          fake_advertising))
+
+            except TencentCloudSDKException as err:
+                print(err)
+
+        # 未知请求，返回400报错
+        else:
+            abort(400)
+
+
+api.add_resource(ContractMailbox, '/contract_analysis/upload')
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
