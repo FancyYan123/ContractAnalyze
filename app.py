@@ -20,12 +20,8 @@ class ContractMailbox(Resource):
         contract_data = json.loads(request.get_data())
         # 解析请求中用户自己选择的字段
         company_name = contract_data['company_name']
-        loan_consistent_with_actual = (
-            True if contract_data['loan_consistent_with_actual'] == '1' else False
-        )
-        fake_advertising = (
-            True if contract_data['fake_advertising'] == '1' else False
-        )
+        loan_consistent_with_actual = contract_data['loan_consistent_with_actual']
+        fake_advertising = contract_data['fake_advertising']
 
         # 如果用户直接上传的合同文本，直接分析文本
         if contract_data["type"] == 'text':
@@ -39,25 +35,27 @@ class ContractMailbox(Resource):
         # 图片以base64编码
         elif contract_data["type"] == 'image':
             try:
-                cred = credential.Credential("AKIDqvmSxs0v4QaV9ESpPjqtgBrHTO6c8ugV", "lMiqZ1IKL7mFXWBZr65pIVWM1RlobGgt")
-                httpProfile = HttpProfile()
-                httpProfile.endpoint = "ocr.tencentcloudapi.com"
-
-                clientProfile = ClientProfile()
-                clientProfile.httpProfile = httpProfile
-                client = ocr_client.OcrClient(cred, "ap-shanghai", clientProfile)
-
-                req = models.GeneralBasicOCRRequest()
-                if Debug:
-                    params = '{"ImageBase64":"%s"}' % (str(get_image_base64())[2:-1])
-                else:
-                    params = '{"ImageBase64":"%s"}' % (str(contract_data['image_base64_data']))
-                req.from_json_string(params)
-
-                resp = client.GeneralBasicOCR(req)
                 text = ''
-                for each in resp.TextDetections:
-                    text += each.DetectedText
+                for image_data in contract_data['image_base64_data']:
+                    cred = credential.Credential("AKIDqvmSxs0v4QaV9ESpPjqtgBrHTO6c8ugV",
+                                                 "lMiqZ1IKL7mFXWBZr65pIVWM1RlobGgt")
+                    httpProfile = HttpProfile()
+                    httpProfile.endpoint = "ocr.tencentcloudapi.com"
+
+                    clientProfile = ClientProfile()
+                    clientProfile.httpProfile = httpProfile
+                    client = ocr_client.OcrClient(cred, "ap-shanghai", clientProfile)
+
+                    req = models.GeneralBasicOCRRequest()
+                    if Debug:
+                        params = '{"ImageBase64":"%s"}' % (str(get_image_base64())[2:-1])
+                    else:
+                        params = '{"ImageBase64":"%s"}' % (str(image_data))
+                    req.from_json_string(params)
+
+                    resp = client.GeneralBasicOCR(req)
+                    for each in resp.TextDetections:
+                        text += each.DetectedText
 
                 # TODO: analyze all_text using detecting rules
                 return json.dumps(analyze(text,
@@ -73,7 +71,7 @@ class ContractMailbox(Resource):
             abort(400)
 
 
-api.add_resource(ContractMailbox, '/contract_analysis/upload')
+api.add_resource(ContractMailbox, '/account/contracts/upload')
 
 
 if __name__ == '__main__':
