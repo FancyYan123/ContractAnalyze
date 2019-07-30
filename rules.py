@@ -1,5 +1,5 @@
+# -*- coding = utf-8 -*-
 import re
-
 
 class Rule:
     def __init__(self, name, match_strings, default_msg=''):

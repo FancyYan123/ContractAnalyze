@@ -1,3 +1,4 @@
+# -*- coding = utf-8 -*-
 from flask import Flask, request, abort
 from flask_restful import Resource, Api
 import json
