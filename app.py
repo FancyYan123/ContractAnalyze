@@ -71,6 +71,9 @@ class ContractMailbox(Resource):
         else:
             abort(400)
 
+    def get(self):
+        return "You are trying to use GET to visit here. Why not try POST. "
+
 
 api.add_resource(ContractMailbox, '/account/contracts/upload')
 
