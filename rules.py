@@ -1,5 +1,6 @@
 # -*- coding = utf-8 -*-
 import re
+from helper import *
 
 class Rule:
     def __init__(self, name, match_strings, default_msg=''):
@@ -114,16 +115,50 @@ class PledgeRule(Rule):
         super(PledgeRule, self).__init__(rule_name, match_strings, default_msg=default_msg)
 
 
-def analyze(text:str, company_name: str, loan_consistent_with_actual: bool, fake_advertising: bool):
-    text = re.split(r'\n\n|。|；|;|\?', text)
-    text = list(map(lambda s: s.replace('\n', '').replace(' ', ''), text))
+class InterestRule(Rule):
+    def __init__(self, rule_name='利率政策',
+                 match_strings=('年利率.*(\%)', '月利率.*(\%)', '日利率.*(\%)'),
+                 default_msg='24%以下年利率受法律保护，\
+                 24%~36%区间内为借贷双方协商收取，超过36%部分为违法所得，借贷方有权拒付。'
+                 ):
+        super(InterestRule, self).__init__(rule_name, match_strings, default_msg)
+
+    def match_interest(self, target, term):
+        interests = re.findall('\d+\.?\d*%', term)
+        interest = find_closest_substr(term, target, interests)[:-1]
+        return interest
+
+    def match(self, term):
+        year_interest = self.match_patterns[0].search(term)
+        if year_interest is not None:
+            interest = self.match_interest('年利率', term)
+            return term, "年利率为{}%，".format(interest) + self.default_msg
+        month_interest = self.match_patterns[1].search(term)
+        if month_interest is not None:
+            interest = float(self.match_interest('月利率', term))*12
+            return term, "年利率为{}%，".format(interest) + self.default_msg
+        day_interest = self.match_patterns[2].search(term)
+        if day_interest is not None:
+            interest = float(self.match_interest('日利率', term))*360
+            return term, "年利率为{}%，".format(interest) + self.default_msg
+        return None
+
+
+def analyze(text: str,
+            company_name: str,
+            loan_consistent_with_actual: bool,
+            fake_advertising: bool,
+            data_type: str):
+    text = text_splitter(text, data_type)
+
     rules = (LenderRule(company_name),
              AmountRule(),
              PeriodRule(),
              OtherCostsRule(),
              OverDueRule(),
              OverDueInterestRule(),
-             PledgeRule()
+             PledgeRule(),
+             InterestRule()
              )
 
     warning_msg, count_warning = {}, 0
