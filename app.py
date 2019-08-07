@@ -77,8 +77,8 @@ class ContractMailbox(Resource):
         return "You are trying to use GET to visit here. Why not try POST. "
 
 
-#api.add_resource(ContractMailbox, '/contract/analyze')
-api.add_resource(ContractMailbox, '/')
+api.add_resource(ContractMailbox, '/contract/analyze')
+#api.add_resource(ContractMailbox, '/')
 
 
 if __name__ == '__main__':
