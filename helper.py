@@ -4,8 +4,8 @@ import base64
 import re
 import math
 
-def get_image_base64():
-    path = 'C:\\tmp\\test.jpg'
+def get_image_base64(path):
+    # path = 'C:\\tmp\\test.jpg'
     im = Image.open(path)
     size = im.height, im.width
 #    if im.height > 2000:
@@ -43,6 +43,8 @@ def find_closest_substr(whole_str:str, target:str, sub_strs:list):
     """
     if len(sub_strs) == 1:
         return sub_strs[0]
-    target_index = whole_str.find(target)
+    p = re.compile(target)
+    target_str = p.findall(whole_str)[0]
+    target_index = whole_str.find(target_str)
     distance = [math.fabs(target_index-whole_str.find(each)) for each in sub_strs]
     return sub_strs[distance.index(min(distance))]

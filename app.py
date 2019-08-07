@@ -13,12 +13,12 @@ from tencentcloud.ocr.v20181119 import ocr_client, models
 
 app = Flask(__name__)
 api = Api(app)
-Debug = True
-
+Debug = False
 
 class ContractMailbox(Resource):
     def post(self):
-        contract_data = json.loads(request.get_data())
+        request_data = request.get_data()
+        contract_data = json.loads(request_data, strict=False)
         # 解析请求中用户自己选择的字段
         company_name = contract_data['company_name']
         loan_consistent_with_actual = contract_data['loan_consistent_with_actual']
