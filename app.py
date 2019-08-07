@@ -27,10 +27,11 @@ class ContractMailbox(Resource):
         # 如果用户直接上传的合同文本，直接分析文本
         if contract_data["type"] == 'text':
             # TODO: analyze all_text using detecting rules
-            return json.dumps(analyze(contract_data['text'],
-                                      company_name,
-                                      loan_consistent_with_actual,
-                                      fake_advertising))
+            return_obj = analyze(contract_data['text_data'],
+                                 company_name,
+                                 loan_consistent_with_actual,
+                                 fake_advertising, 'text')
+            return json.dumps({'result': True, 'reason': '', 'return_object': return_obj})
 
         # 如果上传的合同图片，先使用腾讯云OCR进行文本提取再分析
         # 图片以base64编码
@@ -59,23 +60,24 @@ class ContractMailbox(Resource):
                         text += each.DetectedText
 
                 # TODO: analyze all_text using detecting rules
-                return json.dumps(analyze(text,
-                                          company_name,
-                                          loan_consistent_with_actual,
-                                          fake_advertising))
+                return_obj = analyze(text,
+                                     company_name,
+                                     loan_consistent_with_actual,
+                                     fake_advertising, 'image')
+                return json.dumps({'result': True, 'reason': '', 'return_object': return_obj})
 
             except TencentCloudSDKException as err:
-                print(err)
+                return json.dumps({'result': False, 'reason': err.get_message(), 'return_object': None})
 
-        # 未知请求，返回400报错
+        # 未知请求，返回报错信息
         else:
-            abort(400)
+            return json.dumps({'result': False, 'reason': 'Unknown data type, you can choose either "text" or "image". ', 'return_object': None})
 
     def get(self):
         return "You are trying to use GET to visit here. Why not try POST. "
 
 
-api.add_resource(ContractMailbox, '/account/contracts/upload')
+api.add_resource(ContractMailbox, '/contract/analyze')
 
 
 if __name__ == '__main__':
